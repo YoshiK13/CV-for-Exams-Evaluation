@@ -4,12 +4,14 @@ A repository for the development of automated exam assessments using OpenCV, wit
 
 ## Features
 
-- 🖼️ **Image Processing**: Load and preprocess exam images for analysis
-- 🔍 **Pattern Recognition**: Detect patterns, shapes, and features in exam images
-- ⭕ **Circle Detection**: Identify answer bubbles in multiple-choice exams
-- 📊 **Contour Detection**: Find and analyze shapes and regions of interest
-- 🎯 **Template Matching**: Match and locate specific patterns in exam images
-- ✅ **Edge Detection**: Identify boundaries and important features
+- � **Template Generation**: Create compact, printable exam answer sheet templates
+- 🎯 **Automatic Alignment**: Use corner markers to automatically align and deskew scanned images
+- 🖼️ **Image Processing**: Convert images to black and white for robust detection
+- 🔍 **Answer Detection**: Automatically detect marked answers in multiple-choice exams
+- ✅ **Answer Validation**: Identify invalid answers (no marks or multiple marks per question)
+- 📊 **Pattern Recognition**: Detect patterns, shapes, and features in exam images
+- 🎨 **Contour Detection**: Find and analyze shapes and regions of interest
+- 🔧 **Configurable**: Adjust cell sizes, question counts, and detection thresholds
 
 ## Prerequisites
 
@@ -37,46 +39,83 @@ A repository for the development of automated exam assessments using OpenCV, wit
 
 ## Quick Start
 
-### Running the Basic Example
+### Complete Workflow Example
 
-The repository includes a basic pattern recognition example that demonstrates the core capabilities:
+See the full exam evaluation workflow in action:
 
 ```bash
-python examples/basic_pattern_recognition.py
+python examples/demo_complete_workflow.py
 ```
 
-This will:
-- Create a sample exam image with answer bubbles
-- Demonstrate various pattern recognition techniques
-- Generate visualizations of detected patterns
-- Save processed images in the `examples/` directory
+This demonstrates:
+
+- Generating an exam template
+- Simulating a filled exam (marking answers)
+- Processing the exam to detect marked answers
+- Validating answers (detecting invalid/multiple marks)
+
+### Generate an Exam Template
+
+```bash
+python examples/generate_exam_sheet.py
+```
+
+### Test Invalid Answer Detection
+
+```bash
+python examples/demo_invalid_answers.py
+```
 
 ### Using the PatternRecognizer Class
 
 ```python
 from exam_evaluator import PatternRecognizer
+import cv2
 
 # Initialize the recognizer
 recognizer = PatternRecognizer()
 
-# Load an exam image
+# 1. Generate an exam template
+template = recognizer.generate_exam_sheet_template(
+    title="Midterm Exam",
+    num_questions=10,
+    choices_per_question=4,
+    sheet_size=(800, 1000)
+)
+cv2.imwrite('exam_template.png', template)
+
+# 2. Process a filled exam (complete pipeline)
+result = recognizer.process_exam_sheet(
+    'scanned_exam.png',
+    num_questions=10,
+    choices_per_question=4
+)
+
+if result['success']:
+    answers = result['answers']
+    for i, answer in enumerate(answers):
+        if answer is not None:
+            print(f"Q{i+1}: {'ABCD'[answer]}")
+        else:
+            print(f"Q{i+1}: INVALID")
+else:
+    print(f"Error: {result['error']}")
+
+# 3. Low-level operations
+# Load and preprocess
 image = recognizer.load_image('path/to/exam.jpg')
-
-# Convert to grayscale
 gray = recognizer.convert_to_grayscale(image)
+binary = recognizer.convert_to_black_and_white(gray)
 
-# Detect edges
+# Align using corner markers
+aligned = recognizer.align_exam_image(image)
+
+# Detect edges and contours
 edges = recognizer.detect_edges(gray)
-
-# Find contours
 contours, hierarchy = recognizer.find_contours(edges)
-
-# Detect circles (answer bubbles)
-circles = recognizer.detect_circles(gray, min_radius=10, max_radius=30)
-
-# Preprocess exam image (complete pipeline)
-preprocessed = recognizer.preprocess_exam_image('path/to/exam.jpg')
 ```
+
+For more details, see the [Usage Guide](docs/USAGE_GUIDE.md).
 
 ## Project Structure
 
