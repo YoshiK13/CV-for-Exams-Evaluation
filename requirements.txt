@@ -1,0 +1,21 @@
+# Core Computer Vision Library
+opencv-python==4.10.0.84
+opencv-contrib-python==4.10.0.84
+
+# Image Processing
+numpy==1.26.4
+Pillow==10.4.0
+
+# Pattern Recognition and Machine Learning
+scikit-image==0.24.0
+scikit-learn==1.5.2
+
+# Data Handling
+pandas==2.2.3
+
+# Visualization
+matplotlib==3.9.2
+
+# Testing
+pytest==8.3.3
+pytest-cov==5.0.0
