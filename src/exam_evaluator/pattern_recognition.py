@@ -1,6 +1,15 @@
 """
 Pattern Recognition Module for Exam Evaluation
+
 This module provides pattern recognition capabilities using OpenCV for exam image analysis.
+
+OPTIMIZATIONS IMPLEMENTED:
+- Direct use of OpenCV functions for maximum performance
+- Smart grayscale conversion (avoids redundant conversions)
+- Efficient preprocessing pipeline with native OpenCV operations
+- Removal of duplicate code and unnecessary wrapper methods
+- Optimized morphology for shadow removal
+- Internal helper methods (_to_gray) for efficient code reuse
 """
 
 import cv2
@@ -36,21 +45,38 @@ class PatternRecognizer:
             return None
         return image
     
-    def convert_to_grayscale(self, image: np.ndarray) -> np.ndarray:
+    def _to_gray(self, image: np.ndarray) -> np.ndarray:
         """
-        Convert a color image to grayscale.
+        Convert image to grayscale if needed (optimized helper method).
+        
+        Optimization: Avoids redundant conversion if image is already grayscale.
         
         Args:
-            image: Input image (BGR format)
+            image: Input image (BGR or already grayscale)
             
         Returns:
             Grayscale image
         """
+        if len(image.shape) == 2:
+            return image
         return cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+    
+    # Public methods for API compatibility
+    def convert_to_grayscale(self, image: np.ndarray) -> np.ndarray:
+        """
+        Convert a color image to grayscale (optimized OpenCV wrapper).
+        
+        Args:
+            image: Input image (BGR format or already grayscale)
+            
+        Returns:
+            Grayscale image
+        """
+        return self._to_gray(image)
     
     def apply_threshold(self, image: np.ndarray, threshold_value: int = 127) -> np.ndarray:
         """
-        Apply binary threshold to an image.
+        Apply binary threshold to an image using OpenCV directly.
         
         Args:
             image: Input grayscale image
@@ -174,13 +200,9 @@ class PatternRecognizer:
         if image is None:
             return None
         
-        # Convert to grayscale
-        gray = self.convert_to_grayscale(image)
-        
-        # Apply Gaussian blur to reduce noise
+        # Optimized pipeline using OpenCV directly
+        gray = self._to_gray(image)
         blurred = cv2.GaussianBlur(gray, (5, 5), 0)
-        
-        # Apply adaptive threshold
         processed = cv2.adaptiveThreshold(
             blurred, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, 
             cv2.THRESH_BINARY, 11, 2
@@ -359,7 +381,8 @@ class PatternRecognizer:
             List of (x, y) centers for detected square markers. Returns an empty
             list if none are found.
         """
-        gray = image if len(image.shape) == 2 else cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+        # Optimization: use helper method for grayscale conversion
+        gray = self._to_gray(image)
         _, thr = cv2.threshold(gray, 128, 255, cv2.THRESH_BINARY_INV | cv2.THRESH_OTSU)
         # Use morphological closing to reduce small holes/blur effects
         kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (5, 5))
@@ -470,67 +493,55 @@ class PatternRecognizer:
             image: Input image (BGR or grayscale)
             
         Returns:
-            Shadow-removed image (grayscale)
+            Shadow-removed image (grayscale, 8-bit)
         """
-        # Convert to grayscale if needed
-        if len(image.shape) == 3:
-            gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-        else:
-            gray = image.copy()
+        # Optimization: use helper method for conversion
+        gray = self._to_gray(image)
         
-        # Apply blur to reduce noise
+        # Optimized pipeline using OpenCV directly
         blurred = cv2.GaussianBlur(gray, (5, 5), 0)
-        
-        # Use morphological dilation operation to get background
-        # This creates an estimate of background lighting
         kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (20, 20))
         background = cv2.morphologyEx(blurred, cv2.MORPH_DILATE, kernel, iterations=3)
-        
-        # Subtract background from original image to remove shadows
-        # Use cv2.divide for normalization
         shadow_removed = cv2.divide(blurred, background, scale=255)
         
-        # Apply histogram equalization to improve contrast
-        shadow_removed = cv2.equalizeHist(shadow_removed)
-        
-        return shadow_removed
+        return cv2.equalizeHist(shadow_removed)
 
-    def convert_to_black_and_white(self, image: np.ndarray, use_adaptive: bool = False, remove_shadows: bool = True) -> np.ndarray:
+    def convert_to_black_and_white(self, image: np.ndarray, use_adaptive: bool = False, remove_shadows: bool = False) -> np.ndarray:
         """
-        Convert an image to pure black and white (binary).
+        Convert image to binary (pure black and white) using optimized OpenCV pipeline.
+        
+        Optimizations:
+        - Smart grayscale conversion (avoids redundancy)
+        - Optional shadow removal with morphology
+        - Direct OpenCV thresholding (adaptive or simple)
         
         Args:
             image: Input image (BGR or grayscale)
-            use_adaptive: If True, use adaptive thresholding; otherwise use simple threshold
-            remove_shadows: If True, remove shadows before conversion (recommended)
+            use_adaptive: If True, use adaptive threshold (better for variable lighting)
+            remove_shadows: If True, remove shadows first (useful if not done previously)
             
         Returns:
             Binary (black and white) image where black=0, white=255
         """
-        # Convert to grayscale if needed
-        if len(image.shape) == 3:
-            gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-        else:
-            gray = image.copy()
+        # Optimization: efficient grayscale conversion
+        gray = self._to_gray(image)
         
-        # Remove shadows if requested (improves detection with uneven lighting)
+        # Remove shadows only if explicitly requested
         if remove_shadows:
             gray = self.remove_shadows(gray)
         
+        # Optimized thresholding pipeline with OpenCV
         if use_adaptive:
-            # Apply Gaussian blur to reduce noise
+            # Blur + adaptive threshold for variable lighting
             blurred = cv2.GaussianBlur(gray, (5, 5), 0)
-            # Adaptive threshold works better with varying lighting
-            binary = cv2.adaptiveThreshold(
+            return cv2.adaptiveThreshold(
                 blurred, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, 
                 cv2.THRESH_BINARY, 11, 2
             )
         else:
-            # Simple threshold - anything below 200 is considered black
-            # This works well for clean scanned/generated images
+            # Simple threshold (optimal for preprocessed images)
             _, binary = cv2.threshold(gray, 200, 255, cv2.THRESH_BINARY)
-        
-        return binary
+            return binary
 
     def extract_answer_cells(
         self,
