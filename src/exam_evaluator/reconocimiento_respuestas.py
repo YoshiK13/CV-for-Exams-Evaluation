@@ -230,8 +230,8 @@ class ReconocedorRespuestas:
         altura_fila_opcion = max(15, int(altura_restante / n_filas_opciones))
 
         ancho_col_etiqueta = max(30, int(ancho_tabla * 0.08))
-        area_q_w = ancho_tabla - ancho_col_etiqueta
-        ancho_celda = area_q_w / n_cols
+        ancho_area_respuesta = ancho_tabla - ancho_col_etiqueta
+        ancho_celda = ancho_area_respuesta / n_cols
         
         # Extraer coordenadas de celda
         celdas = []
